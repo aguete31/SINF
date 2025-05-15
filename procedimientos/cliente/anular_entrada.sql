@@ -1,13 +1,10 @@
+USE entrada_eventos;
+
 DELIMITER //
 
--- Creamos el procedimiento para evitar a un cliente comprar un numero excesivo de
--- entradas.
-
--- CARGAR VALORES DE RESERVA_COMPRA
--- COMPROBAMOS QUE NO EXISTA EN LA TABLA, PORQUE PERTENECE A OTRO SI NO
--- SI NO ESTÁ, O RESERVAMOS O COMPRAMOS, LIMITE ENTRE LOS DOS
-
-CREATE PROCEDURE ReservarEntrada(
+-- Procedimiento para anular las reservas por usuario y permitir a 
+-- otros comprar.
+CREATE PROCEDURE anularReserva(
     IN aux_UbicacionLocalidad VARCHAR(10),
     IN aux_NombreEspectaculo VARCHAR(55),
     IN aux_TipoEspectaculo VARCHAR(55),
@@ -18,33 +15,46 @@ CREATE PROCEDURE ReservarEntrada(
 )
 
 BEGIN
-    -- Declaramos las variables para la gestion de la compra
-    DECLARE num_reservas INT DEFAULT 0;
-    DECLARE max_reservas INT DEFAULT 5;
+    -- Declaramos las variables para gestionar los minutos restantes
+    -- y si existen reservas.
+    DECLARE minutos_restantes INT;
+    DECLARE reserva_existente INT;
 
-    -- Contamos cuantas reservas tiene ya ese cliente para ese evento
-    SELECT COUNT(*) INTO num_reservas
+    -- Comprobamos si existe y que es una reserva, no una compra
+    SELECT COUNT(*) INTO reserva_existente
     FROM RESERVA_COMPRA
-    WHERE IBAN = p_IBAN
+    WHERE IBAN = aux_IBAN
+      AND UbicacionLocalidad = aux_UbicacionLocalidad
       AND NombreEspectaculo = aux_NombreEspectaculo
       AND TipoEspectaculo = aux_TipoEspectaculo
       AND Ubicacion = aux_Ubicacion
-      AND FechaInicio = aux_FechaInicio;
+      AND FechaInicio = aux_FechaInicio
+      AND Estado = FALSE;
 
-    -- Verificamos el limite
-    IF num_reservas < max_reservas THEN
-        INSERT INTO RESERVA_COMPRA (
-            UbicacionLocalidad, NombreEspectaculo, TipoEspectaculo,
-            Ubicacion, FechaInicio, IBAN, TipoUsuario
-        ) VALUES (
-            aux_UbicacionLocalidad, aux_NombreEspectaculo, aux_TipoEspectaculo,
-            aux_Ubicacion, aux_FechaInicio, aux_IBAN, aux_TipoUsuario
-        );
-    ELSE
+    -- Comprobamos si hay reservas para el usuario
+    IF reserva_existente = 0 THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Límite de reservas alcanzado para este evento.';
+        SET MESSAGE_TEXT = 'No existen reservas para este cliente.';
+    ELSE
+        -- Calculamos el tiempo restante
+        SELECT TIMESTAMPDIFF(MINUTE, NOW(), aux_FechaInicio) INTO minutos_restantes;
+
+        -- Comprobamos si esta a menos de 20 min
+        IF minutos_restantes < 20 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'No se puede anular dado que va a empezar pronto el evento.';
+        ELSE
+            -- En el caso de no estar a menos de 20 min, la eliminamos
+            DELETE FROM RESERVA_COMPRA
+            WHERE UbicacionLocalidad = aux_UbicacionLocalidad
+              AND NombreEspectaculo = aux_NombreEspectaculo
+              AND TipoEspectaculo = aux_TipoEspectaculo
+              AND Ubicacion = aux_Ubicacion
+              AND FechaInicio = aux_FechaInicio
+              AND IBAN = aux_IBAN
+              AND Estado = FALSE;
+        END IF;
     END IF;
-    
 END;
 
 //

@@ -6,7 +6,7 @@ from faker import Faker
 # Detalles de la conexión a la base de datos
 db_config = {
     "host": "localhost",
-    "user": "p1",
+    "user": "admin",
     "password": "1Qwertyuiop_",
     "database": "entrada_eventos"
 }

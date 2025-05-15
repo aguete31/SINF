@@ -1,12 +1,25 @@
 #!/bin/bash
-mariadb < "drop database entrada_eventos; create database entrada_eventos;"
+#mariadb < "drop database entrada_eventos; create database entrada_eventos;"
 
-mariadb < taquilla.sql
+# mariadb < taquilla.sql
 
-for entry in procedimientos/cliente do
-	mariadb < "$entry"
+DB_ADMIN_USER="admin"
+DB_ADMIN_PASSWORD="1Qwertyuiop_"
+DATABASE_NAME="entrada_eventos"
+
+# Execute SQL scripts for clientes
+for entry in procedimientos/cliente/*.sql; do
+  if [[ -f "$entry" ]]; then
+    echo "USE $DATABASE_NAME;" | cat - "$entry" | mariadb -u "$DB_ADMIN_USER" -p"$DB_ADMIN_PASSWORD"
+  echo "$entry"
+
+  fi
 done
 
-for entry in procedimientos/administrador do
-        mariadb < "$entry"
+# Execute SQL scripts for administradores
+for entry in procedimientos/administrador/*.sql; do
+  if [[ -f "$entry" ]]; then
+    echo "USE $DATABASE_NAME;" | cat - "$entry" | mariadb -u "$DB_ADMIN_USER" -p"$DB_ADMIN_PASSWORD"
+  echo "$entry"
+  fi
 done
