@@ -19,6 +19,13 @@ BEGIN
     DECLARE num_reservas_compras INT DEFAULT 0;
     DECLARE max_reservas_compras INT DEFAULT 5;
 
+    -- Insertamos el cliente a nuestra base de datos si no existe
+    IF NOT EXISTS(
+        SELECT 1 FROM CLIENTE WHERE IBAN = aux_IBAN
+    ) THEN
+        INSERT INTO CLIENTE (IBAN) VALUES (aux_IBAN);
+    END IF;
+
     -- Contamos cuantas reservas tiene ya ese cliente para ese evento
     SELECT COUNT(*) INTO num_reservas_compras
     FROM RESERVA_COMPRA
