@@ -1,9 +1,11 @@
-USE entrada_eventos;
+
 
 DELIMITER //
 
+
+
 -- Procedimiento para evitar que se solapen eventos
-CREATE OR REPLACE PROCEDURE crearEventos(
+CREATE PROCEDURE crearEventos(
     IN aux_NombreEspectaculo varchar(55),
     IN aux_TipoEspectaculo varchar(55),
     IN aux_Ubicacion varchar(55),
@@ -11,15 +13,19 @@ CREATE OR REPLACE PROCEDURE crearEventos(
 )
 
 BEGIN
+
     -- Variables para calcular la duracion y fecha final de los eventos
     DECLARE aux_Duracion INT;
     DECLARE aux_FechaFin timestamp;
     DECLARE aux_Conflictos INT;
+    SET FOREIGN_KEY_CHECKS=0;
+
+    START TRANSACTION;
 
     -- Obtenemos la duracion del espectaculo
     SELECT DuracionEspectaculo INTO aux_Duracion
     FROM ESPECTACULO
-    WHERE NombreEspectaculo = aux_NombreEspectaculo 
+    WHERE NombreEspectaculo = aux_NombreEspectaculo
       AND TipoEspectaculo = aux_TipoEspectaculo;
 
     -- Calculamos la fecha del fin
@@ -31,14 +37,14 @@ BEGIN
     WHERE Ubicacion = aux_Ubicacion
       AND(
             -- Si el evento empieza durante otro
-            (aux_FechaInicio BETWEEN FechaInicio AND FechaFin) OR
+             (aux_FechaInicio BETWEEN FechaInicio AND FechaFin) OR
 
             -- Si el evento termina durante otro
-            (aux_FechaFin BETWEEN FechaInicio AND FechaFin) OR
+             (aux_FechaFin BETWEEN FechaInicio AND FechaFin) OR
 
             -- El evento contiene al otro
-            (aux_FechaInicio < FechaInicio AND aux_FechaFin > FechaFin)
-      );
+             (aux_FechaInicio < FechaInicio AND aux_FechaFin > FechaFin)
+        );
 
 IF aux_Conflictos > 0 THEN
     SIGNAL SQLSTATE '45000'
@@ -52,6 +58,8 @@ ELSE
     VALUES(aux_NombreEspectaculo, aux_TipoEspectaculo, aux_Ubicacion, aux_FechaInicio, aux_FechaFin);
 END IF;
 
+    SET FOREIGN_KEY_CHECKS=0;
+    COMMIT;
 END;
 
 //

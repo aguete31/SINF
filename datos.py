@@ -3,15 +3,15 @@ from datetime import datetime, timedelta
 from random import choice, randint, sample, uniform
 from faker import Faker
 
-# Database connection details (replace with your actual credentials)
+# Detalles de la conexión a la base de datos
 db_config = {
     "host": "localhost",
-    "user": "your_user",
-    "password": "your_password",
+    "user": "p1",
+    "password": "1Qwertyuiop_",
     "database": "entrada_eventos"
 }
 
-fake = Faker('es_ES')  # Using Spanish locale for more realistic names
+fake = Faker('es_ES')
 
 def insert_random_espectaculo(cursor, num_entries=100):
     tipos_espectaculo = ["Música", "Teatro", "Cine", "Danza", "Comedia", "Ópera"]
@@ -41,44 +41,31 @@ def insert_random_recinto(cursor, num_entries=20):
         except mysql.connector.Error as err:
             print(f"Error inserting random Recinto: {err}")
 
-def insert_random_fecha(cursor, num_entries=50):
-    start_date = datetime(2025, 6, 1)
-    end_date = datetime(2025, 8, 31)
-    time_difference = end_date - start_date
+def insert_random_evento(cursor, espectaculos, recintos, num_entries=500):
     for _ in range(num_entries):
-        random_days = randint(0, time_difference.days)
-        random_hour = randint(10, 22)
-        random_minute = choice([0, 15, 30, 45])
-        fecha = start_date + timedelta(days=random_days, hours=random_hour, minutes=random_minute)
-        try:
-            cursor.execute(
-                "INSERT INTO FECHA (FechaInicio) VALUES (%s)",
-                (fecha,)
-            )
-        except mysql.connector.Error as err:
-            print(f"Error inserting random Fecha: {err}")
-
-def insert_random_evento(cursor, espectaculos, recintos, fechas, num_entries=500):
-    for _ in range(num_entries):
-        nombre_espectaculo, tipo_espectaculo = choice(espectaculos)
+        espectaculo_seleccionado = choice(espectaculos)
+        nombre_espectaculo = espectaculo_seleccionado[0]
+        tipo_espectaculo = espectaculo_seleccionado[1]
         ubicacion = choice(recintos)
-        fecha_inicio = choice(fechas)
-        duracion_espectaculo = next((duracion for n, t, _, duracion in espectaculos if n == nombre_espectaculo and t == tipo_espectaculo), 90)
-        fecha_fin = fecha_inicio + timedelta(minutes=duracion_espectaculo)
+        fecha_inicio = datetime(2025, 6, 1) + timedelta(days=randint(0, 90), hours=randint(10, 22), minutes=choice([0, 15, 30, 45]))
         try:
             cursor.execute(
-                "INSERT INTO EVENTO (NombreEspectaculo, TipoEspectaculo, Ubicacion, FechaInicio, FechaFin) VALUES (%s, %s, %s, %s, %s)",
-                (nombre_espectaculo, tipo_espectaculo, ubicacion, fecha_inicio, fecha_fin)
+                "CALL crearEventos(%s, %s, %s, %s)",
+                (nombre_espectaculo, tipo_espectaculo, ubicacion, fecha_inicio)
             )
         except mysql.connector.Error as err:
             print(f"Error inserting random Evento: {err}")
 
 def insert_random_localidad(cursor, eventos, num_entries=1000):
-    ubicaciones_localidad = ["Fila A Asiento {}".format(i) for i in range(1, 21)] + \
-                              ["Fila B Asiento {}".format(i) for i in range(1, 21)] + \
-                              ["Palco {}".format(i) for i in range(1, 6)]
+    ubicaciones_localidad = ["F{}".format(i) for i in range(1, 21)] + \
+                            ["C{}".format(i) for i in range(1, 21)] + \
+                            ["A{}".format(i) for i in range(1, 6)]
     for _ in range(num_entries):
-        nombre_espectaculo, tipo_espectaculo, ubicacion_recinto, fecha_inicio = choice(eventos)
+        evento_seleccionado = choice(eventos)
+        nombre_espectaculo = evento_seleccionado[0]
+        tipo_espectaculo = evento_seleccionado[1]
+        ubicacion_recinto = evento_seleccionado[2]
+        fecha_inicio = evento_seleccionado[3]
         ubicacion_localidad = choice(ubicaciones_localidad)
         try:
             cursor.execute(
@@ -91,7 +78,6 @@ def insert_random_localidad(cursor, eventos, num_entries=1000):
 def insert_permite(cursor, espectaculos):
     tipos_usuario = ["Jubilado", "Adulto", "Infantil", "Parado", "Bebe"]
     for nombre_espectaculo, tipo_espectaculo, _, _ in espectaculos:
-        # Randomly assign allowed user types (at least one)
         num_allowed = randint(1, len(tipos_usuario))
         allowed_types = sample(tipos_usuario, num_allowed)
         for tipo_usuario in allowed_types:
@@ -121,6 +107,28 @@ def insert_entrada(cursor, localidades):
         except mysql.connector.Error as err:
             print(f"Error inserting Entrada: {err}")
 
+def insert_cuesta(cursor, localidades, precios_por_tipo):
+    """
+    Inserta datos en la tabla CUESTA.
+
+    Args:
+        cursor: El cursor de la base de datos.
+        localidades: Lista de tuplas que representan las localidades.
+        precios_por_tipo: Diccionario que mapea el tipo de usuario al precio.
+    """
+    tipos_usuario = ["Jubilado", "Adulto", "Infantil", "Parado", "Bebe"] #lista de tipos de usuario
+    for ubicacion_localidad, nombre_espectaculo, tipo_espectaculo, ubicacion, fecha_inicio in localidades:
+        # Esto es un placeholder, necesitas reemplazarlo con la lógica real para obtener el tipo de usuario.
+        tipo_usuario = choice(tipos_usuario) #selecciona un tipo de usuario al azar
+        precio_localidad = precios_por_tipo.get(tipo_usuario, 20.00)  # 20.00 como precio por defecto
+        try:
+            cursor.execute(
+                "INSERT INTO CUESTA (UbicacionLocalidad, NombreEspectaculo, TipoEspectaculo, Ubicacion, FechaInicio, TipoUsuario, PrecioLocalidad) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (ubicacion_localidad, nombre_espectaculo, tipo_espectaculo, ubicacion, fecha_inicio, tipo_usuario, precio_localidad)
+            )
+        except mysql.connector.Error as err:
+            print(f"Error inserting CUESTA: {err}")
+
 if __name__ == "__main__":
     try:
         cnx = mysql.connector.connect(**db_config)
@@ -138,14 +146,8 @@ if __name__ == "__main__":
         cursor.execute("SELECT Ubicacion FROM RECINTO")
         recintos_data = [row[0] for row in cursor.fetchall()]
 
-        print("Inserting random Fecha entries...")
-        insert_random_fecha(cursor, num_entries=100)
-        cnx.commit()
-        cursor.execute("SELECT FechaInicio FROM FECHA")
-        fechas_data = [row[0] for row in cursor.fetchall()]
-
         print("Inserting random Evento entries...")
-        insert_random_evento(cursor, espectaculos_data, recintos_data, fechas_data, num_entries=200)
+        insert_random_evento(cursor, espectaculos_data, recintos_data, num_entries=200)
         cnx.commit()
         cursor.execute("SELECT NombreEspectaculo, TipoEspectaculo, Ubicacion, FechaInicio FROM EVENTO")
         eventos_data = cursor.fetchall()
@@ -168,13 +170,19 @@ if __name__ == "__main__":
         insert_entrada(cursor, localidades_data)
         cnx.commit()
 
+        # Insertar datos en CUESTA
+        print("Inserting CUESTA entries...")
+        precios_por_tipo = {
+            "Jubilado": 15.00,
+            "Adulto": 25.00,
+            "Infantil": 10.00,
+            "Parado": 18.00,
+            "Bebe": 5.00,
+        }
+        insert_cuesta(cursor, localidades_data, precios_por_tipo)
+        cnx.commit()
+
         print("Random data insertion completed successfully!")
 
     except mysql.connector.Error as err:
         print(f"Error: '{err}'")
-
-    finally:
-        if cnx.is_connected():
-            cursor.close()
-            cnx.close()
-            print("MySQL connection closed.")
