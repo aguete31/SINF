@@ -17,7 +17,7 @@ BEGIN
         ROUND(SUM(c.PrecioLocalidad), 2) AS TotalRecaudado
     FROM 
         RESERVA_COMPRA rc
-    LEFT JOIN 
+    JOIN 
         CUESTA c ON rc.UbicacionLocalidad = c.UbicacionLocalidad
                AND rc.NombreEspectaculo = c.NombreEspectaculo
                AND rc.TipoEspectaculo = c.TipoEspectaculo

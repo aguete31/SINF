@@ -19,6 +19,21 @@ BEGIN
     DECLARE num_reservas_compras INT DEFAULT 0;
     DECLARE max_reservas_compras INT DEFAULT 5;
 
+    -- Variable para ver si esta permitido el usuario en el evento
+    DECLARE permitido INT DEFAULT 0;
+
+    -- Comprobamos si el tipo de usuario esta permitido
+    SELECT COUNT(*) INTO permitido
+    FROM PERMITE
+    WHERE NombreEspectaculo = aux_NombreEspectaculo
+      AND TipoEspectaculo = aux_TipoEspectaculo
+      AND TipoUsuario = aux_TipoUsuario;
+
+    IF permitido = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Este usuario no está autorizado para acceder a dicho evento.';
+    END IF;
+
     -- Insertamos el cliente a nuestra base de datos si no existe
     IF NOT EXISTS(
         SELECT 1 FROM CLIENTE WHERE IBAN = aux_IBAN
