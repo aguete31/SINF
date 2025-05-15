@@ -48,7 +48,6 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Límite de reservas/compras alcanzado para este evento.';
     END IF;
-
 END;
 
 //
