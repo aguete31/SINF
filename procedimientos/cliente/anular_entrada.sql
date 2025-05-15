@@ -4,7 +4,7 @@ DELIMITER //
 
 -- Procedimiento para anular las reservas por usuario y permitir a 
 -- otros comprar.
-CREATE PROCEDURE anularReserva(
+CREATE OR REPLACE PROCEDURE anularReserva(
     IN aux_UbicacionLocalidad VARCHAR(10),
     IN aux_NombreEspectaculo VARCHAR(55),
     IN aux_TipoEspectaculo VARCHAR(55),
@@ -19,6 +19,9 @@ BEGIN
     -- y si existen reservas.
     DECLARE minutos_restantes INT;
     DECLARE reserva_existente INT;
+
+    -- Control para eliminar usuario si no tiene entrdas.
+    DECLARE entradas_cliente INT;
 
     -- Comprobamos si existe y que es una reserva, no una compra
     SELECT COUNT(*) INTO reserva_existente
@@ -53,6 +56,18 @@ BEGIN
               AND FechaInicio = aux_FechaInicio
               AND IBAN = aux_IBAN
               AND Estado = FALSE;
+
+            -- Verificamos si el cliente tiene mas entradas
+            SELECT COUNT(*) INTO entradas_cliente
+            FROM RESERVA_COMPRA
+            WHERE IBAN = aux_IBAN;
+
+            -- Si no tiene mas entradas, eliminamos el cliente
+            IF entradas_cliente = 0 THEN
+                DELETE FROM CLIENTE
+                WHERE IBAN = aux_IBAN;
+            END IF;
+
         END IF;
     END IF;
 END;
